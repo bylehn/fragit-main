@@ -7,6 +7,7 @@ from .test_writers import suite as tw_suite
 from .test_gamessfmooutput import suite as tg_suite
 from .test_qmmm_interface import suite as qm_suite
 from .test_mfcc_interface import suite as mf_suite
+from .test_toolkit_openbabel import suite as tk_suite
 
 if __name__ == '__main__':
     suite = unittest.TestSuite()
@@ -17,4 +18,5 @@ if __name__ == '__main__':
     suite.addTest(tg_suite)
     suite.addTest(qm_suite)
     suite.addTest(mf_suite)
+    suite.addTest(tk_suite)
     unittest.TextTestRunner().run(suite)
