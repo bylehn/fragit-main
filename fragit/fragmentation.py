@@ -5,21 +5,15 @@ Some portions Copyright (C) 2011-2023 Casper Steinmann
 import sys
 from typing import List, Tuple
 
-from fragit.fragit_exceptions import OBNotFoundException
-
-try:
-    from openbabel import openbabel
-except ImportError:
-    raise OBNotFoundException("OpenBabel not found. Please install OpenBabel to use FragIt.")
-
+from fragit.toolkits import get_toolkit
 from fragit.util import remove_duplicates, flatten, difference, uniqifyListOfLists, is_tuple_values_in_either_list, LABEL2Z
 from fragit.config import FragItConfig, FragItDataBase
 
 
 class Fragmentation(FragItConfig):
 
-    def __init__(self, mol: openbabel.OBMol, **kwargs):
-        """ Readies a fragmentation object for an OpenBabel molecule
+    def __init__(self, mol, **kwargs):
+        """ Readies a fragmentation object for a molecule (MoleculeProtocol)
 
             Arguments:
             mol -- molecule
@@ -31,7 +25,7 @@ class Fragmentation(FragItConfig):
         defaults = kwargs.pop("defaults", FragItDataBase)
         FragItConfig.__init__(self, defaults=defaults, filename=conffile, **kwargs)
         self.mol = mol
-        self.pat = openbabel.OBSmartsPattern()
+        self.pat = get_toolkit().make_smarts_matcher()
         self._atom_names: List[str] = []
         self._residue_names: List[str] = []
         self._fragment_names: List[str] = []
@@ -40,7 +34,7 @@ class Fragmentation(FragItConfig):
         self._backbone_atoms: List[int] = []
         self._water_molecules: List[int] = []
         self._mergeable_atoms: List[int] = []
-        self._atoms: List[openbabel.OBAtom] = []
+        self._atoms: List = []
         self._fragment_charges_filename = None  # to read in fragment charges
         self._fix_atoms_and_charges()
         self._nbonds_broken: int = 0
@@ -56,7 +50,7 @@ class Fragmentation(FragItConfig):
         """
         _metalAtoms = self._remove_metal_atoms()
 
-        self.formalCharges = [0.0 for _ in range(self.mol.NumAtoms())]
+        self.formalCharges = [0.0 for _ in range(self.mol.num_atoms())]
 
         # We can use either of the following:
         # None to just have zero charges
@@ -68,12 +62,13 @@ class Fragmentation(FragItConfig):
         else:
 
             print("FragIt: The charge model in use is: {}".format(model))
-            charge_model = openbabel.OBChargeModel.FindType(model)
-            if charge_model is None:
+            try:
+                charge_model = get_toolkit().make_charge_model(model)
+            except ValueError:
                 raise ValueError("Error: FragIt [FRAGMENTATION] could not use the charge model '{0:s}'".format(model))
 
-            if charge_model.ComputeCharges(self.mol):
-                self.formalCharges = list(charge_model.GetPartialCharges())
+            if charge_model.compute_charges(self.mol):
+                self.formalCharges = list(charge_model.get_partial_charges())
             else:
                 print("Info: FragIt [FRAGMENTATION] fragment charges are not available.")
 
@@ -81,11 +76,11 @@ class Fragmentation(FragItConfig):
             if len(_metalAtoms) > 0:
                 print("Info: FragIt [FRAGMENTATION] appending metal atoms.")
                 for atom in _metalAtoms:
-                    if not self.mol.AddAtom(atom):
+                    if not self.mol.add_atom(atom):
                         raise Exception("Error: FragIt [FRAGMENTATION] encountered an error when reinserting the metals.")
                     else:
                         self._atoms.append(atom)
-                        self.formalCharges.append(atom.GetFormalCharge())
+                        self.formalCharges.append(atom.get_formal_charge())
 
     def _remove_metal_atoms(self):
         _metalAtoms = []
@@ -93,33 +88,32 @@ class Fragmentation(FragItConfig):
         removing = True
         while removing:
             added = 0
-            if self.mol.NumAtoms() == 0:
+            if self.mol.num_atoms() == 0:
                 break
-            for i in range(1, self.mol.NumAtoms()+1):
-                atom = self.mol.GetAtom(i)
-                if atom.GetAtomicNum() in [1, 6, 7, 8, 9, 12, 15, 16]:
+            for i in range(1, self.mol.num_atoms()+1):
+                atom = self.mol.get_atom(i)
+                if atom.get_atomic_num() in [1, 6, 7, 8, 9, 12, 15, 16]:
                     if atom not in self._atoms:
                         self._atoms.append(atom)
                     added += 1
                 else:
-                    print("Info: FragIt [FRAGMENTATION] Temporarily removing atom with Z={}".format(atom.GetAtomicNum()))
+                    print("Info: FragIt [FRAGMENTATION] Temporarily removing atom with Z={}".format(atom.get_atomic_num()))
                     # the atoms are most-likely counter ions, so we give them an
                     # appropriate formal charge (of +/- 1)
                     atomic_charge = 0  # default
-                    if atom.GetAtomicNum() in [11, 19]:  # Na+ and K+:
+                    if atom.get_atomic_num() in [11, 19]:  # Na+ and K+:
                         atomic_charge = 1
-                    elif atom.GetAtomicNum() in [9, 17]:  # F- and Cl-
+                    elif atom.get_atomic_num() in [9, 17]:  # F- and Cl-
                         atomic_charge = -1
 
-                    new_atom = openbabel.OBAtom()
-                    new_atom.Duplicate(atom)
-                    new_atom.SetFormalCharge(atomic_charge)
+                    new_atom = self.mol.duplicate_atom(atom)
+                    new_atom.set_formal_charge(atomic_charge)
 
                     _metalAtoms.append(new_atom)
-                    self.mol.DeleteAtom(atom)
+                    self.mol.delete_atom(atom)
                     break
 
-                if added == self.mol.NumAtoms():
+                if added == self.mol.num_atoms():
                     removing = False
                     break
 
@@ -154,17 +148,13 @@ class Fragmentation(FragItConfig):
     def identify_backbone_atoms(self):
         """ Identifies protein-backbone atoms """
         pattern = "N([*])C([H])C(=O)"
-        self.pat.Init(pattern)
-        self.pat.Match(self.mol)
-        self._backbone_atoms = remove_duplicates(flatten(self.pat.GetUMapList()))
+        self._backbone_atoms = remove_duplicates(flatten(self.pat.match(self.mol, pattern)))
 
     def identify_water_molecules(self):
         """ Identifies all water molecules in the system """
         pattern = "[OH2]"
         # maybe O([H])[H] will give us all the atoms, actually
-        self.pat.Init(pattern)
-        self.pat.Match(self.mol)
-        self._water_molecules = remove_duplicates(flatten(self.pat.GetUMapList()))
+        self._water_molecules = remove_duplicates(flatten(self.pat.match(self.mol, pattern)))
 
     def identify_mergeable_atoms(self):
         """ Identifies fragmentation points that are to be merged with neighbour fragments
@@ -242,8 +232,11 @@ class Fragmentation(FragItConfig):
     def get_fragment_names(self) -> List[str]:
         return self._fragment_names
 
-    def get_ob_atoms(self) -> List[openbabel.OBAtom]:
+    def get_atoms(self) -> List:
         return self._atoms
+
+    def get_ob_atoms(self) -> List:
+        return self.get_atoms()
 
     def set_protected_atoms(self):
         self.apply_smart_protect_patterns()
@@ -257,9 +250,7 @@ class Fragmentation(FragItConfig):
             self.add_explicitly_protected_atoms(self._get_atoms_to_protect(pattern))
 
     def _get_atoms_to_protect(self, pattern: str) -> List[int]:
-        self.pat.Init(pattern)
-        self.pat.Match(self.mol)
-        return flatten(self.pat.GetUMapList())
+        return flatten(self.pat.match(self.mol, pattern))
 
     def identify_residues(self):
         if len(self._residue_names) > 0:
@@ -272,9 +263,7 @@ class Fragmentation(FragItConfig):
         result = []
         for residue in patterns.keys():
             pattern = patterns[residue]
-            self.pat.Init(pattern)
-            self.pat.Match(self.mol)
-            for atoms in self.pat.GetUMapList():
+            for atoms in self.pat.match(self.mol, pattern):
                 result.append({residue: atoms})
 
         self._residue_names = result
@@ -305,7 +294,7 @@ class Fragmentation(FragItConfig):
             self._delete_ob_mol_bond(atom_pair)
 
     def _delete_ob_mol_bond(self, atom_pair: Tuple[int, int]):
-        """ Deletes the bond in the OBMol instance between a pair of atoms
+        """ Deletes the bond in the molecule between a pair of atoms
 
             with version 2.5 of the openbabel API there has been a change in
             the way bonds are guesstimated and this requires us to increase
@@ -315,20 +304,13 @@ class Fragmentation(FragItConfig):
             Arguments:
             pair -- a tuple (i, j) of the atoms with the bond between them
         """
-        bond = self.mol.GetBond(atom_pair[0], atom_pair[1])
-        bond_order = bond.GetBondOrder()
-        try:
-            atom1 = self.get_ob_atom(atom_pair[0])
-            atom2 = self.get_ob_atom(atom_pair[1])
-            impl_h_count1 = atom1.GetImplicitHCount()
-            impl_h_count2 = atom2.GetImplicitHCount()
-        except AttributeError:  # not openbabel 2.5
-            pass
-        else:
-            atom1.SetImplicitHCount(impl_h_count1 + bond_order)
-            atom2.SetImplicitHCount(impl_h_count2 + bond_order)
-
-        self.mol.DeleteBond(bond)
+        bond = self.mol.get_bond(atom_pair[0], atom_pair[1])
+        bond_order = bond.get_bond_order()
+        atom1 = self.get_atom(atom_pair[0])
+        atom2 = self.get_atom(atom_pair[1])
+        atom1.set_implicit_h_count(atom1.get_implicit_h_count() + bond_order)
+        atom2.set_implicit_h_count(atom2.get_implicit_h_count() + bond_order)
+        self.mol.delete_bond(bond)
 
     def _search_fragmentation_atom_pairs(self):
         """ Searches for places to break bonds via SMARTS
@@ -348,9 +330,7 @@ class Fragmentation(FragItConfig):
                 continue
 
             # find occurrences of the fragmentation pattern
-            self.pat.Init(pattern)
-            self.pat.Match(self.mol)
-            matches = self.pat.GetUMapList()
+            matches = self.pat.match(self.mol, pattern)
             self._nbonds_broken += len(matches)
             if self.get_verbose():
                 print("      Found {0:d} matching bonds.".format(len(matches)))
@@ -384,7 +364,7 @@ class Fragmentation(FragItConfig):
         """
         if pair[0] == pair[1]:
             raise ValueError("Error: FragIt [FRAGMENTATION] Fragment pair '{0:s}' must be two different atoms.".format(str(pair)))
-        if self.mol.GetBond(pair[0], pair[1]) is None:
+        if self.mol.get_bond(pair[0], pair[1]) is None:
             raise ValueError("Error: FragIt [FRAGMENTATION] Fragment pair '{0:s}' must be connected with a bond.".format(str(pair)))
         return True
 
@@ -409,7 +389,7 @@ class Fragmentation(FragItConfig):
         self._fragments = sorted(result)
 
     def find_remaining_fragments(self):
-        remaining_atoms = difference(list(range(1, self.mol.NumAtoms() + 1)), flatten(self._fragments))
+        remaining_atoms = difference(list(range(1, self.mol.num_atoms() + 1)), flatten(self._fragments))
         while len(remaining_atoms) > 0:
             newfrag = self.get_atoms_in_same_fragment(remaining_atoms[0])
             remaining_atoms = difference(remaining_atoms, newfrag)
@@ -537,7 +517,7 @@ class Fragmentation(FragItConfig):
             This method determines fragments in a system.
             It works by finding all possible atoms between
             two end-points in the molecular graph by calling
-            the FindChildren method of OBMol.
+            the FindChildren method of the molecule.
 
             Note: There is some dark art going on here since
                   a2 is apparently always zero.
@@ -546,23 +526,24 @@ class Fragmentation(FragItConfig):
             raise ValueError
         if a2 != 0:
             raise ValueError
-        tmp = openbabel.vectorInt()
-        self.mol.FindChildren(tmp, a2, a1)
-
-        fragment = [value for value in tmp] + [a1]
+        fragment = self.mol.find_children(a1, a2) + [a1]
         return sorted(fragment)
 
-    def get_ob_atom(self, atom_index: int) -> openbabel.OBAtom:
-        """ Retrieves an OpenBabel atom from the fragmentation object
+    def get_atom(self, atom_index: int):
+        """ Retrieves an atom from the fragmentation object
 
             :param int atom_index: The atom index of the atom to retrieve.
-            :returns: an openbabel atom
+            :returns: an atom (AtomProtocol)
         """
         if not isinstance(atom_index, int):
             raise ValueError
-        if atom_index < 1 or atom_index > self.mol.NumAtoms():
-            raise IndexError("Error: FragIt[FRAGMENTATION] Index '{0:d}' out of range [{1:d},{2:d}]".format(atom_index, 1, self.mol.NumAtoms()))
-        return self.mol.GetAtom(atom_index)
+        if atom_index < 1 or atom_index > self.mol.num_atoms():
+            raise IndexError("Error: FragIt[FRAGMENTATION] Index '{0:d}' out of range [{1:d},{2:d}]".format(atom_index, 1, self.mol.num_atoms()))
+        return self.mol.get_atom(atom_index)
+
+    def get_ob_atom(self, atom_index: int):
+        """ Deprecated alias for get_atom(). """
+        return self.get_atom(atom_index)
 
     def name_fragments(self) -> List[str]:
         names = list()
@@ -578,15 +559,15 @@ class Fragmentation(FragItConfig):
             raise ValueError("Error: FragIt [FRAGMENTATION] Cannot name empty fragments. Aborting.")
 
         if len(atoms) == 1:
-            atom = self.mol.GetAtom(atoms[0])
-            charge_lbl = charge_lbls[atom.GetFormalCharge()]
-            element = LABEL2Z[atom.GetAtomicNum()]
+            atom = self.mol.get_atom(atoms[0])
+            charge_lbl = charge_lbls[atom.get_formal_charge()]
+            element = LABEL2Z[atom.get_atomic_num()]
             return "{0:s}{1:s}".format(element, charge_lbl)
         else:
-            for residue in openbabel.OBResidueIter(self.mol):
-                for atom in openbabel.OBResidueAtomIter(residue):
-                    if atom.GetIdx() in atoms:
-                        return str(residue.GetName())
+            for residue in self.mol.iter_residues():
+                for atom in residue.iter_atoms():
+                    if atom.get_idx() in atoms:
+                        return str(residue.get_name())
         return "None"
 
     def get_backbone_atoms(self):
@@ -597,32 +578,28 @@ class Fragmentation(FragItConfig):
 
     def name_atoms(self):
         """Attempts to name atoms """
-        atoms_no_name = list(range(0, self.mol.NumAtoms()))
+        atoms_no_name = list(range(0, self.mol.num_atoms()))
 
         # first try to name atoms according to biological
         # function, i.e. from a PDB file.
-
-        # OpenBabel has problems with some elements, so we need to work around
-        # those here.
-        for residue in openbabel.OBResidueIter(self.mol):
-            if residue.GetNumAtoms() > 0:
-                for atom in openbabel.OBResidueAtomIter(residue):
-                    atoms_no_name.remove(atom.GetId())
-                    self._atom_names.append(residue.GetAtomID(atom))
+        for residue in self.mol.iter_residues():
+            if residue.get_num_atoms() > 0:
+                for atom in residue.iter_atoms():
+                    atoms_no_name.remove(atom.get_id())
+                    self._atom_names.append(residue.get_atom_id(atom))
             else:
                 pass
 
         # if there are items left in "atoms_no_name" try to name them
-        # print atoms_no_name
         if len(atoms_no_name) > 0:
             if self.get_verbose():
                 print("Info: FragIt [FRAGMENTATION] will now try to name remaining {0:3d} atoms".format(len(atoms_no_name)))
 
             for i, index in enumerate(atoms_no_name):
-                atom = self.mol.GetAtom(index+1)
-                self._atom_names.append(atom.GetType())
+                atom = self.mol.get_atom(index+1)
+                self._atom_names.append(atom.get_type())
                 if self.get_verbose():
-                    print("   atom {0:4d} is forced to have name '{1:s}'".format(index, atom.GetType()))
+                    print("   atom {0:4d} is forced to have name '{1:s}'".format(index, atom.get_type()))
 
     def get_atom_names(self):
         return self._atom_names

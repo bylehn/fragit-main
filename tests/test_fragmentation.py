@@ -3,7 +3,6 @@ Copyright (C) 2011-2017 Casper Steinmann
 """
 import os
 import unittest
-from openbabel import openbabel
 
 from fragit.fragmentation import Fragmentation
 from fragit.util import file_to_mol
@@ -174,7 +173,7 @@ class TestFragmentationModule(unittest.TestCase):
 
     def test_FragmentationGetOBAtom(self):
         test_atom = self.fragmentation.get_ob_atom(1)
-        self.assertEqual(type(test_atom), type(openbabel.OBAtom()))
+        self.assertTrue(hasattr(test_atom, 'get_atomic_num'))
 
     def test_FragmentationNameFragments(self):
         self.fragmentation.break_bonds()

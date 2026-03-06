@@ -6,12 +6,6 @@ import os
 import string
 from typing import List, Tuple, Any, Union, Callable, Optional
 
-from fragit.fragit_exceptions import OBNotFoundException
-try:
-    from openbabel import openbabel
-except ImportError:
-    raise OBNotFoundException("OpenBabel not found. Please install OpenBabel to use FragIt.")
-
 import numpy as np
 
 # converts nuclear charge to atom label
@@ -289,29 +283,28 @@ def list_of_ranges_to_string(atom_list: List[Union[int, Tuple[int, int]]],
     return result
 
 
-def file_to_mol(filename: str) -> openbabel.OBMol:
-    """ Converts a filename to an openbabel molecule """
-    file_format = file_extension(filename)[1:]
-    obc = openbabel.OBConversion()
-    obc.SetInFormat(file_format)
-    mol = openbabel.OBMol()
-    obc.ReadFile(mol, filename)
+def file_to_mol(filename: str):
+    """ Converts a filename to a toolkit molecule (MoleculeProtocol) """
+    from fragit.toolkits import get_toolkit
+    mol = get_toolkit().read_molecule(filename)
     OBCheckMoleculeConsistency(mol)
     return mol
 
 
-def OBCheckMoleculeConsistency(molecule: openbabel.OBMol):
-    if molecule.NumAtoms() < 1:
+def OBCheckMoleculeConsistency(molecule):
+    if molecule.num_atoms() < 1:
         raise ValueError("Molecule has no atoms.")
 
 
-def calculate_hydrogen_position(heavy: openbabel.OBAtom, light: openbabel.OBAtom) -> np.ndarray:
+def calculate_hydrogen_position(heavy, light) -> np.ndarray:
     """ Positions a hydrogen atom in the "correct" position between two points
     """
     table = {6: 1.09, 7: 1.01, 8: 0.96, 16: 1.35, 15: 1.42}
-    alpha: float = table[heavy.GetAtomicNum()]
-    p1 = np.array([heavy.GetX(), heavy.GetY(), heavy.GetZ()])
-    p2 = np.array([light.GetX(), light.GetY(), light.GetZ()])
+    alpha: float = table[heavy.get_atomic_num()]
+    #p1 = np.array([heavy.get_x(), heavy.get_y(), heavy.get_z()])
+    #p2 = np.array([light.get_x(), light.get_y(), light.get_z()])
+    p1 = np.array(heavy.get_position())
+    p2 = np.array(light.get_position())
     n = np.linalg.norm(p2-p1)
     return np.asarray(p1 + alpha/n * (p2 - p1))
 

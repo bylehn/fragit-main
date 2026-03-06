@@ -74,9 +74,9 @@ class TestXYZWriterModule(unittest.TestCase):
         for i in range(len(fragmentation.get_fragments())):
             filename = "temp_water_fragment_{0:03d}.xyz".format(i+1)
             m2 = file_to_mol(filename)
-            nat_written += m2.NumAtoms()
+            nat_written += m2.num_atoms()
             self.delete_file(filename)
-        self.assertEqual(nat_written, molecule.NumAtoms())
+        self.assertEqual(nat_written, molecule.num_atoms())
 
         os.chdir("..")
 
@@ -110,9 +110,9 @@ class TestXYZMFCCWriterModule(unittest.TestCase):
         for i in range(len(fragmentation.get_fragments())):
             filename = "temp_water_fragment_{0:03d}.xyz".format(i+1)
             m2 = file_to_mol(filename)
-            nat_written += m2.NumAtoms()
+            nat_written += m2.num_atoms()
             self.delete_file(filename)
-        self.assertEqual(nat_written, molecule.NumAtoms())
+        self.assertEqual(nat_written, molecule.num_atoms())
 
         os.chdir("..")
 

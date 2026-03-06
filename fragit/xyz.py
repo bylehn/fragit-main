@@ -1,10 +1,7 @@
 """
-Copyright (C) 2013-2023 Casper Steinmann
+Copyright (C) 2013-2026 Casper Steinmann
 """
-from typing import List
-
 import numpy as np
-from openbabel import openbabel
 
 from fragit.writer import Standard
 from fragit.util import get_filename_and_extension, Z2LABEL
@@ -49,28 +46,28 @@ class XYZ(Standard):
         template.override()
         template.write()
 
-    def build_single_fragment(self, fragment: List[int]):
+    def build_single_fragment(self, fragment: list[int]):
         """
             fragment -- atom idx of the current fragment
         """
-        output_atoms = [self._fragmentation.get_ob_atom(index) for index in fragment]
-        output_types = [atom.GetAtomicNum() for atom in output_atoms]
+        output_atoms = [self._fragmentation.get_atom(index) for index in fragment]
+        output_types = [atom.get_atomic_num() for atom in output_atoms]
 
         return output_atoms, output_types
 
     @staticmethod
-    def write_fragment_xyz(atms: List[openbabel.OBAtom], nuclear_charges: List[int]) -> str:
+    def write_fragment_xyz(atms: list, nuclear_charges: list[int]) -> str:
         """ Generates the xyz file format for a single fragment
 
             Arguments:
-            atms -- list of openbabel atoms
+            atms -- list of atoms (AtomProtocol)
             types -- list of nuclear charges
         """
         xyz_line = "{0:s} {1:20.12f} {2:20.12f} {3:20.12f}\n"
         n = len(atms)
         s = "{0:d}\n{1:s}\n".format(n, "")
-        for nucz, _obatom in zip(nuclear_charges, atms):
-            (x, y, z) = (_obatom.GetX(), _obatom.GetY(), _obatom.GetZ())
+        for nucz, _atom in zip(nuclear_charges, atms):
+            (x, y, z) = _atom.get_position()
             s += xyz_line.format(Z2LABEL[nucz], x, y, z)
 
         return s

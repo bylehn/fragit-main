@@ -8,8 +8,6 @@ from typing import Dict, List, Tuple
 # from numpy import sqrt, dot, where, array
 import numpy as np
 
-from openbabel import openbabel
-
 from fragit.writer import Standard
 from fragit.util import write_string_to_file
 from fragit.util import list_to_2d, list_2d_to_str
@@ -371,7 +369,7 @@ class GamessFMO(Standard):
         atoms = []
         central_atoms = self._fragmentation.get_fragments()[self._central_fragment - 1]
         atoms.extend(central_atoms)
-        all_atoms = range(1, len(self._fragmentation.get_ob_atoms()) + 1)
+        all_atoms = range(1, len(self._fragmentation.get_atoms()) + 1)
         for atom_idx in central_atoms:
             for atom_jdx in all_atoms:
                 if atom_jdx in central_atoms or atom_jdx in atoms:
@@ -453,7 +451,7 @@ class GamessFMO(Standard):
         return "".join([self.get_basis_set_for_atoms_in_layer(ilayer) for ilayer in range(1, self._nlayers + 1)])
 
     def get_basis_set_for_atoms_in_layer(self, layer: int) -> str:
-        atom_numbers = remove_duplicates([atom.GetAtomicNum() for atom in self._fragmentation.get_ob_atoms()])
+        atom_numbers = remove_duplicates([atom.get_atomic_num() for atom in self._fragmentation.get_atoms()])
         atom_numbers.sort()
         atoms: List[str] = [Z2LABEL[atom_number] for atom_number in atom_numbers]
         return "".join([self.write_basis_set_for_atom(layer, atom) for atom in atoms])
@@ -496,7 +494,7 @@ class GamessFMO(Standard):
         return s.format(xyzstring)
 
     def write_fmoxyz_atoms(self) -> str:
-        fragment_atoms = self._fragmentation.get_ob_atoms()
+        fragment_atoms = self._fragmentation.get_atoms()
         fragments = self._fragmentation.get_fragments()
         fmo_fragments = []
 
@@ -507,13 +505,18 @@ class GamessFMO(Standard):
         atoms = [fragment_atoms[i-1] for i in sorted(fmo_fragments)]
         return "".join([self.write_fmoxyz_atom(i, atom) for i, atom in enumerate(atoms, start=1)])
 
-    def write_fmoxyz_atom(self, index: int, atom: openbabel.OBAtom) -> str:
+    def write_fmoxyz_atom(self, index: int, atom) -> str:
         atom_label = "{0:7d}".format(index)
         if self._fragmentation.has_atom_names():
             names = self._fragmentation.get_atom_names()
             atom_label = "%7s" % (names[index - 1])
-        return "%7s%7s%17f%13f%13f\n" % (atom_label,
-                                         Z2LABEL[atom.GetAtomicNum()], atom.GetX(), atom.GetY(), atom.GetZ())
+        return "{0:7s}{1:>7s}{2[0]:17f}{2[1]:13f}{2[2]:13f}\n".format(
+                atom_label,
+                Z2LABEL[atom.get_atomic_num()],
+                atom.get_position(),
+                )
+        #Oreturn "%7s%7s%17f%13f%13f\n" % (atom_label,
+        #                                 Z2LABEL[atom.get_atomic_num()], atom.get_x(), atom.get_y(), atom.get_z())
 
     def write_fmo_fmo_group(self) -> str:
         fmo_string = " $FMO\n%s%s%s\n%s\n%s\n%s\n%s\n%s\n%s\n $END\n"
@@ -660,15 +663,15 @@ class GamessFMO(Standard):
         return r_max
 
     def get_distance_between_atoms(self, iat: int, jat: int) -> float:
-        def get_ob_atom_vector(fragmentation, index: int) -> np.ndarray:
-            atom = fragmentation.get_ob_atom(index)
-            return np.array([atom.GetX(), atom.GetY(), atom.GetZ()])
+        def get_atom_position(fragmentation, index: int) -> np.ndarray:
+            atom = fragmentation.get_atom(index)
+            return np.array(atom.get_position())
         """ Returns the distance between two atoms """
-        ivec = get_ob_atom_vector(self._fragmentation, iat)
-        jvec = get_ob_atom_vector(self._fragmentation, jat)
-        atom_vector = jvec - ivec
-        r2: float = np.dot(atom_vector, atom_vector)
-        return r2**0.5
+        ivec = get_atom_position(self._fragmentation, iat)
+        jvec = get_atom_position(self._fragmentation, jat)
+        dR = jvec - ivec
+        R2: float = np.dot(dR, dR)
+        return R2**0.5
 
     def get_layers_from_distances(self, distances: List[float]) -> List[int]:
         nfrags = len(self._fragmentation.get_fragments())
@@ -694,7 +697,7 @@ class GamessFMO(Standard):
         s = ""
         nefpwaters = len(self._water_fragments)
         fragments = self._fragmentation.get_fragments()
-        fragment_atoms = self._fragmentation.get_ob_atoms()
+        fragment_atoms = self._fragmentation.get_atoms()
         if nefpwaters > 0:
             s += " $EFRAG\n"
             s += "COORD=CART\n"
@@ -702,7 +705,7 @@ class GamessFMO(Standard):
                 s += "FRAGNAME=H2ORHF\n"
                 for idx, atom_index in enumerate(fragments[water_fragment], start=1):
                     atom = fragment_atoms[atom_index-1]
-                    symbol = Z2LABEL[atom.GetAtomicNum()]
-                    s += "{0:s}{1:d}{2:17.6f}{3:13.6f}{4:13.6f}\n".format(symbol, idx, atom.GetX(), atom.GetY(), atom.GetZ())
+                    symbol = Z2LABEL[atom.get_atomic_num()]
+                    s += "{0:s}{1:d}{2[0]:17.6f}{2[1]:13.6f}{2[2]:13.6f}\n".format(symbol, idx, atom.get_position())
             s += " $END\n"
         return s

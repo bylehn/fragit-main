@@ -2,9 +2,7 @@
 Copyright (C) 2013-2023 Casper Steinmann
 """
 import numpy as np
-from typing import List, Optional
-
-from openbabel import openbabel
+from typing import Optional
 
 from fragit.mfcc import MFCC, Cap
 from fragit.pymol import PymolTemplate
@@ -56,16 +54,16 @@ class XYZMFCC(Standard):
         template.override()
         template.write()
 
-    def _build_single_fragment(self, fragment, caps: Optional[List[Cap]]):
+    def _build_single_fragment(self, fragment, caps: Optional[list[Cap]]):
         atomnames = ["" for _ in fragment]
-        atoms: List[Optional[openbabel.OBAtom]]
+        atoms: list[Optional]
         if -1 in fragment:
             atoms = [None for _ in fragment]
             nucz = [0 for _ in atoms]
             neighbours = [-1 for _ in atoms]
             ids = [-1 for _ in atoms]
         else:
-            atoms = [self._fragmentation.get_ob_atom(i) for i in fragment]
+            atoms = [self._fragmentation.get_atom(i) for i in fragment]
             if self._fragmentation.has_atom_names():
                 names = self._fragmentation.get_atom_names()
                 atomnames = []
@@ -76,7 +74,7 @@ class XYZMFCC(Standard):
                         print("Warning: FragIt could not correctly name atom {0:d}.".format(i))
                         print("         The problem could be with your PDB file.")
                         atomnames.append("X")
-            nucz = [a.GetAtomicNum() for a in atoms if a is not None]
+            nucz = [a.get_atomic_num() for a in atoms if a is not None]
             neighbours = [-1 for _ in atoms]
             ids = [i for i in fragment]
 
@@ -117,10 +115,10 @@ class XYZMFCC(Standard):
         n = len(atoms)
         s = "%i\n%s\n" % (n,"")
         for id, (atom, nucz, neighbour) in enumerate(zip(atoms, nuczs, nbrls)):
-            (x, y, z) = (atom.GetX(), atom.GetY(), atom.GetZ())
-            if atom.GetAtomicNum() != nucz:
+            (x, y, z) = atom.get_position()
+            if atom.get_atomic_num() != nucz:
                 # atom is the light atom and it is connected to the nbrs[id] atom
-                heavy_atom = self._fragmentation.get_ob_atom(neighbour)
+                heavy_atom = self._fragmentation.get_atom(neighbour)
                 (x, y, z) = calculate_hydrogen_position(heavy_atom, atom)
             s += "%s %20.12f %20.12f %20.12f\n" % (Z2LABEL[nucz],
                                                    x, y, z)

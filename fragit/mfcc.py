@@ -2,12 +2,6 @@
 Copyright (C) 2013-2023 Casper Steinmann
 """
 
-from fragit.fragit_exceptions import OBNotFoundException
-
-try:
-    from openbabel import openbabel
-except ImportError:
-    raise OBNotFoundException("OpenBabel not found. Please install OpenBabel to use FragIt.")
 
 
 class Cap(object):
@@ -89,13 +83,13 @@ class MFCC(object):
               Type (or nuclear charge) of the atom
               Neighbour ID of the atom - this is used to identify hydrogens that needs to be repositioned later.
         """
-        cap_atm = [self._fragmentation.get_ob_atom(index) for index in pair]
+        cap_atm = [self._fragmentation.get_atom(index) for index in pair]
         cap_atmnam = ["" for _ in pair]
         if self._fragmentation.has_atom_names():
             cap_atmnam = [self._fragmentation._atom_names[index-1] for index in pair]
 
-        cap_ids = [a.GetIdx() for a in cap_atm]
-        cap_typ = [a.GetAtomicNum() for a in cap_atm]
+        cap_ids = [a.get_idx() for a in cap_atm]
+        cap_typ = [a.get_atomic_num() for a in cap_atm]
         cap_nbs = [-1 for _ in cap_atm]
         order = 0
         while order < self._mfcc_order:
@@ -127,15 +121,15 @@ class MFCC(object):
         typs_out = typs[:]
         nbs_out = nbs[:]
         for atom in atms:
-            for atomext in openbabel.OBAtomAtomIter(atom):
+            for atomext in atom.iter_neighbors():
                 if atomext in atms:
                     continue
                 atms_out.append(atomext)
-                ids_out.append(atomext.GetIdx())
-                nbs_out.append(atom.GetIdx())
+                ids_out.append(atomext.get_idx())
+                nbs_out.append(atom.get_idx())
                 if self._fragmentation.has_atom_names():
                     if not is_final_cap:
-                        atm_namout.append(self._fragmentation._atom_names[atomext.GetIdx() - 1])
+                        atm_namout.append(self._fragmentation._atom_names[atomext.get_idx() - 1])
                     else:
                         # we are sure that when it is a final cap, it is
                         # a hydrogen.
@@ -146,5 +140,5 @@ class MFCC(object):
                 if is_final_cap:
                     typs_out.append(1)
                 else:
-                    typs_out.append(atomext.GetAtomicNum())
+                    typs_out.append(atomext.get_atomic_num())
         return atms_out[:], ids_out[:], typs_out[:], nbs_out[:], atm_namout[:]

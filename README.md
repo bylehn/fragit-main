@@ -68,4 +68,4 @@ In order to run FragIt, you *need* the following installed on your system:
 * The FragIt source code, look above for information on how to obtain it
 * [Open Babel](http://www.openbabel.org) 3 or newer with [python language bindings](http://openbabel.org/docs/dev/Installation/install.html#compile-language-bindings) enabled.
 * [Numpy](http://numpy.scipy.org) 1.5 or newer.
-* [Python](http://www.python.org) 3.9 (or later).
+* [Python](http://www.python.org) 3.12 (or later).

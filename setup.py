@@ -45,7 +45,7 @@ def setup_fragit():
         classifiers = filter(None, classifiers.split("\n")),
         platforms = "Any",
         package_dir={'fragit': 'fragit'},
-        packages=['fragit'],
+        packages=['fragit', 'fragit/toolkits'],
         scripts=['scripts/fragit', 'scripts/fragit-conf'],
         data_files=[
             ('', ['README.md', 'LICENSE', 'CHANGES.md']),

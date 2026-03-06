@@ -1,19 +1,13 @@
 """
-Copyright (C) 2013-2023 Casper Steinmann
+Copyright (C) 2026 Casper Steinmann
 """
-from typing import List
-
 import numpy as np
-
-from fragit.fragit_exceptions import OBNotFoundException
-try:
-    from openbabel import openbabel
-except ImportError:
-    raise OBNotFoundException("OpenBabel not found. Please install OpenBabel to use FragIt.")
-import numpy
 
 from fragit.util import calculate_hydrogen_position
 from fragit.util import flatten, difference, remove_duplicates
+
+
+type Coordinates = list[tuple[float, float, float]]
 
 
 class QMMM(object):
@@ -135,30 +129,23 @@ class QMMM(object):
         # heavy is the heavy atom that wants a hydrogen
         # the following section of code figures out which
         # part of the bond we are investigating
-        heavy = self._fragmentation.get_ob_atom(idx_heavy)
+        heavy = self._fragmentation.get_atom(idx_heavy)
         idx_light = 0
         if bbreak.index(idx_heavy) == 0: idx_light = 1
-        light = self._fragmentation.get_ob_atom(bbreak[idx_light])
+        light = self._fragmentation.get_atom(bbreak[idx_light])
 
         # now we add the new hydrogen atom
-        try:
-            rval = heavy.GetValence()
-        except AttributeError: # OpenBabel3 has a different name
-            rval = heavy.GetExplicitDegree()
-
-        try:
-            ival = heavy.GetImplicitValence()
-        except AttributeError: # openbabel3 API changes
-            ival = rval + heavy.GetImplicitHCount()
+        rval = heavy.get_explicit_degree()
+        ival = heavy.get_implicit_valence()
 
         new_atoms = []
         if ival != rval:
-            if self._fragmentation.mol.AddHydrogens(heavy):
-                for nbatom in openbabel.OBAtomAtomIter(heavy):
-                    if nbatom.GetIdx() not in fragment:
+            if self._fragmentation.mol.add_hydrogens_to_atom(heavy):
+                for nbatom in heavy.iter_neighbors():
+                    if nbatom.get_idx() not in fragment:
                         x,y,z = calculate_hydrogen_position(heavy, light)
-                        nbatom.SetVector(x,y,z)
-                        new_atoms.append(nbatom.GetIdx())
+                        nbatom.set_position(x,y,z)
+                        new_atoms.append(nbatom.get_idx())
         return new_atoms
 
     def _add_fragments_to_qm_region(self, qmfragments):
@@ -277,10 +264,7 @@ class FragmentDistances(object):
 
         return other_fragments
 
-    def is_hydrogen_bond(self,
-                         donor: openbabel.OBAtom,
-                         hydrogen: openbabel.OBAtom,
-                         acceptor: openbabel.OBAtom) -> bool:
+    def is_hydrogen_bond(self, donor, hydrogen, acceptor) -> bool:
         """ angle > 110 is according to:
             http://pac.iupac.org/publications/pac/pdf/2011/pdf/8308x1637.pdf
 
@@ -289,10 +273,10 @@ class FragmentDistances(object):
             H -- hydrogen
             A -- acceptor
         """
-        rah = acceptor.GetDistance(hydrogen)
-        rad = acceptor.GetDistance(donor)
+        rah = acceptor.get_distance(hydrogen)
+        rad = acceptor.get_distance(donor)
         if rah < self._fragmentation.get_h_bond_distance_min() and rad < self._fragmentation.get_h_bond_distance_max():
-            angle = donor.GetAngle(hydrogen, acceptor)  # in degrees
+            angle = donor.get_angle(hydrogen, acceptor)  # in degrees
             if angle > self._fragmentation.get_h_bond_angle():
                 return True
         return False
@@ -303,29 +287,29 @@ class FragmentDistances(object):
             X --- H-O
             as potential donors. the atoms will be returned as a list of tuples (H, ?)
         """
-        obatoms = [self._fragmentation.get_ob_atom(i) for i in self._fragments[idx]]
+        atoms = [self._fragmentation.get_atom(i) for i in self._fragments[idx]]
         # lets locate all the hydrogen atoms connected to a nitrogen or oxygen
         donors = []
-        for obatom in obatoms:
-            if obatom.GetAtomicNum() == 1 and obatom.IsHbondDonorH():
-                for otheratom in obatoms:
-                    if obatom == otheratom: continue
-                    if obatom.IsConnected(otheratom) and otheratom.IsHbondDonor():
-                        donors.append((obatom, otheratom))
+        for atom in atoms:
+            if atom.get_atomic_num() == 1 and atom.is_hbond_donor_h():
+                for otheratom in atoms:
+                    if atom == otheratom: continue
+                    if atom.is_connected(otheratom) and otheratom.is_hbond_donor():
+                        donors.append((atom, otheratom))
                         break
 
         return donors
 
-    def _acceptors_from_fragment(self, idx) -> List[openbabel.OBAtom]:
+    def _acceptors_from_fragment(self, idx) -> list:
         """ Searches a for a hydrogen-bond acceptor (aka a carboxyl oxygen). we consider only
             X --- O=C
             as potential donors. the atoms will be returned
         """
-        obatoms = [self._fragmentation.get_ob_atom(i) for i in self._fragments[idx]]
+        atoms = [self._fragmentation.get_atom(i) for i in self._fragments[idx]]
         acceptors = []
-        for obatom in obatoms:
-            if obatom.IsHbondAcceptor():
-                acceptors.append(obatom)
+        for atom in atoms:
+            if atom.is_hbond_acceptor():
+                acceptors.append(atom)
         return acceptors
 
     def get_fragments_within_distance_from(self, idx):
@@ -352,24 +336,28 @@ class FragmentDistances(object):
 
             other_vectors = self._get_vectors_from_fragment(i_frag)
             R2 = self._get_min_distances2(vectors, other_vectors)
-            R = numpy.sqrt(R2)
+            R = np.sqrt(R2)
             if R < self._fragmentation.get_qmmm_include_all_within_distance():
                 print("Info: FragIt includes fragment {0:5d} (R = {1:6.2f}) in the QM region.".format(i_frag+1, R))
                 other_fragments.append(i_frag)
 
         return other_fragments
 
-    def _get_vectors_from_fragment(self, idx) -> List[List[float]]:
+    def _get_vectors_from_fragment(self, idx) -> Coordinates:
         fragment_atom_indices = self._fragments[idx]
         fragment_atomic_coordinate = []
         for atom_index in fragment_atom_indices:
-            obatom = self._fragmentation.get_ob_atom(atom_index)
-            fragment_atomic_coordinate.append([obatom.GetX(), obatom.GetY(), obatom.GetZ()])
+            atom = self._fragmentation.get_atom(atom_index)
+            fragment_atomic_coordinate.append(atom.get_position())
 
         return fragment_atomic_coordinate
 
     @staticmethod
-    def _get_min_distances2(self, d1s: List[List[float]], d2s: List[List[float]]) -> float:
+    def _get_min_distances2(
+            self,
+            d1s: Coordinates,
+            d2s: Coordinates,
+        ) -> float:
         """ Returns the minimum distance squared (hence the 2) between
             two sets of coordinates d1s and d2s
 
