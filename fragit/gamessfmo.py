@@ -3,7 +3,6 @@ Copyright (C) 2010-2011 Mikael W. Ibsen
 Some portions Copyright (C) 2011-2023 Casper Steinmann
 """
 import os
-from typing import Dict, List, Tuple
 
 # from numpy import sqrt, dot, where, array
 import numpy as np
@@ -29,7 +28,7 @@ GAMESS_BASIS_GROUP['aug-cc-pVDZ'] = "GBASIS=ACCD"
 GAMESS_BASIS_GROUP['aug-cc-pVTZ'] = "GBASIS=ACCT"
 
 # basis set data for atoms in $DATA group
-GAMESS_DATA_BASIS: Dict[str, Dict[str, str]] = dict()
+GAMESS_DATA_BASIS: dict[str, dict[str, str]] = dict()
 GAMESS_DATA_BASIS['STO-3G'] = dict()
 GAMESS_DATA_BASIS['STO-3G']['H'] = 'STO 3'
 GAMESS_DATA_BASIS['STO-3G']['C'] = 'STO 3'
@@ -93,7 +92,7 @@ class GamessFMO(Standard):
         Standard.__init__(self, fragmentation, directories)
 
         self._water_fragments = []
-        self._active_atoms: List[int] = []
+        self._active_atoms: list[int] = []
 
     def setup(self):
         self.setup_layer_information()
@@ -107,7 +106,7 @@ class GamessFMO(Standard):
     def setup_layer_information(self):
         self._fragment_layers = self.compute_fragment_layers()
 
-    def compute_fragment_layers(self) -> List[int]:
+    def compute_fragment_layers(self) -> list[int]:
         fragments = self._fragmentation.get_fragments()
         layers = [1 for _ in fragments]
 
@@ -358,7 +357,7 @@ class GamessFMO(Standard):
             statpt_final = statpt % active_string
             return "{0:s}{1:s}".format(base_final, statpt_final)
 
-    def _get_active_atoms_from_fragments(self) -> List[int]:
+    def _get_active_atoms_from_fragments(self) -> list[int]:
         atoms = []
         fragments = self._fragmentation.get_fragments()
         for idx in self._active_fragments:
@@ -424,7 +423,7 @@ class GamessFMO(Standard):
     def get_bond_group_data(self, bonds) -> str:
         return "".join(["{0:s}".format(self.write_broken_bonds(bond)) for bond in bonds])
 
-    def write_broken_bonds(self, bond_atoms: Tuple[int, int]) -> str:
+    def write_broken_bonds(self, bond_atoms: tuple[int, int]) -> str:
         output_string = "\n{0:>10s}{1:10d}".format("-" + str(bond_atoms[0]), bond_atoms[1])
         dohop = self._fragmentation.do_fmohop_fragmentation()
         basis_sets = self._fragmentation.get_qm_basis()
@@ -453,7 +452,7 @@ class GamessFMO(Standard):
     def get_basis_set_for_atoms_in_layer(self, layer: int) -> str:
         atom_numbers = remove_duplicates([atom.get_atomic_num() for atom in self._fragmentation.get_atoms()])
         atom_numbers.sort()
-        atoms: List[str] = [Z2LABEL[atom_number] for atom_number in atom_numbers]
+        atoms: list[str] = [Z2LABEL[atom_number] for atom_number in atom_numbers]
         return "".join([self.write_basis_set_for_atom(layer, atom) for atom in atoms])
 
     def write_basis_set_for_atom(self, layer: int, atom: str) -> str:
@@ -649,10 +648,10 @@ class GamessFMO(Standard):
         output_2d_list = list_to_2d(layers, 10, '%i')
         return "      LAYER(1)=%s" % list_2d_to_str(output_2d_list, ',', ",\n               ")
         
-    def get_fragment_distances_vector(self, other_fragment: List[int]) -> List[float]:
+    def get_fragment_distances_vector(self, other_fragment: list[int]) -> list[float]:
         return [self.get_fragment_distance_to_fragment(fragment, other_fragment) for fragment in self._fragmentation.get_fragments()]
 
-    def get_fragment_distance_to_fragment(self, fragment: List[int], other_fragment: List[int]) -> float:
+    def get_fragment_distance_to_fragment(self, fragment: list[int], other_fragment: list[int]) -> float:
         r_max = 1e30
         for atom_idx in fragment:
             for atom_jdx in other_fragment:
@@ -673,7 +672,7 @@ class GamessFMO(Standard):
         R2: float = np.dot(dR, dR)
         return R2**0.5
 
-    def get_layers_from_distances(self, distances: List[float]) -> List[int]:
+    def get_layers_from_distances(self, distances: list[float]) -> list[int]:
         nfrags = len(self._fragmentation.get_fragments())
         fragment_layers = np.array([1 for i in range(nfrags)], dtype=int)
         layer = 2

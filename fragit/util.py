@@ -4,7 +4,7 @@ Some portions Copyright (C) 2011-2023 Casper Steinmann
 """
 import os
 import string
-from typing import List, Tuple, Any, Union, Callable, Optional
+from typing import Any, Union, Callable, Optional
 
 import numpy as np
 
@@ -31,14 +31,14 @@ def file_basename(path_to_file: str) -> str:
     return filename
 
 
-def get_filename_and_extension(path_to_file: str) -> Tuple[str, str]:
+def get_filename_and_extension(path_to_file: str) -> tuple[str, str]:
     if not isinstance(path_to_file, str):
         raise TypeError
     basename = os.path.split(path_to_file)[1]
     return os.path.splitext(basename)
 
 
-def remove_duplicates(input_list: Union[List, Tuple]) -> List:
+def remove_duplicates(input_list: Union[list]) -> list:
     """ Removes any duplicates """
     invalid_types = [int, float, bool, str]
     is_invalid = False
@@ -51,7 +51,7 @@ def remove_duplicates(input_list: Union[List, Tuple]) -> List:
     return list(unique_set)
 
 
-def uniqifyListOfLists(thelist: List[List[int]]) -> List[List[int]]:
+def uniqifyListOfLists(thelist: list[list[int]]) -> list[list[int]]:
     result = list()
     keys = list()
     
@@ -64,7 +64,7 @@ def uniqifyListOfLists(thelist: List[List[int]]) -> List[List[int]]:
     return result
 
 
-def flatten(input_list: List[List[Any]]) -> List[Any]:
+def flatten(input_list: list[list[Any]]) -> list[Any]:
     """ Flattens a list of lists into a list """
     flattened_list = list()
     for i in input_list:
@@ -73,15 +73,15 @@ def flatten(input_list: List[List[Any]]) -> List[Any]:
     return flattened_list
 
 
-def difference(first: List[int], second: List[int]) -> List[int]:
+def difference(first: list[int], second: list[int]) -> list[int]:
     set1 = set(first)
     set2 = set(second)
     return list(set1 - set2)
 
 
-def list_to_2d(input_list: List, length: int, element_format: Optional[str] = None) -> List[List]:
-    output_list: List[List] = list()
-    temp_list: List = list()
+def list_to_2d(input_list: list, length: int, element_format: Optional[str] = None) -> list[list]:
+    output_list: list[list] = list()
+    temp_list: list = list()
     
     for element in input_list:
         if element_format is None:
@@ -103,12 +103,12 @@ def list_to_2d(input_list: List, length: int, element_format: Optional[str] = No
     return output_list
 
 
-def list_2d_to_str(input_list: List[List[str]], element_divisor: str, list_divisor: str) -> str:
+def list_2d_to_str(input_list: list[list[str]], element_divisor: str, list_divisor: str) -> str:
     if not is_string_list(input_list):
         raise TypeError 
 
     output_list = list()
-    x: List[str]
+    x: list[str]
     for x in input_list:
         output_list.append(element_divisor.join(x))
 
@@ -152,7 +152,7 @@ def float_list_from_string(input_string: str, seperator: str = ","):
     return list_from_string(input_string, float, seperator)
 
 
-def is_string_list(string_list: Union[List[str], List[List[str]]]) -> bool:
+def is_string_list(string_list: Union[list[str], list[list[str]]]) -> bool:
     if not isinstance(string_list, list):
         raise TypeError
 
@@ -166,7 +166,7 @@ def is_string_list(string_list: Union[List[str], List[List[str]]]) -> bool:
     return True
 
 
-def is_integer_list(string_list: Union[List[int], List[List[int]]]) -> bool:
+def is_integer_list(string_list: Union[list[int], list[list[int]]]) -> bool:
     if not isinstance(string_list, list) and not isinstance(string_list, tuple):
         raise TypeError
 
@@ -204,7 +204,7 @@ def read_string_list_from_file(filename):
     return string.split("\n")
 
 
-def is_tuple_values_in_either_list(the_tuple: Tuple[int, int], list1: List[int], list2: List[int]) -> bool:
+def is_tuple_values_in_either_list(the_tuple: tuple[int, int], list1: list[int], list2: list[int]) -> bool:
     if not isinstance(the_tuple, tuple):
         raise ValueError
     in_lhs = the_tuple[0] in list1 and the_tuple[1] in list2
@@ -212,7 +212,7 @@ def is_tuple_values_in_either_list(the_tuple: Tuple[int, int], list1: List[int],
     return in_lhs or in_rhs
 
 
-def list_to_ranges(the_list: List[int]) -> List[Union[int, Tuple[int, int]]]:
+def list_to_ranges(the_list: list[int]) -> list[Union[int, tuple[int, int]]]:
     """ Converts a list of numbers into possible ranges defined as tuples
 
     example: [1,2,3,4] -> [(1,4)]
@@ -220,7 +220,7 @@ def list_to_ranges(the_list: List[int]) -> List[Union[int, Tuple[int, int]]]:
     :param the_list:
     :return:
     """
-    def expand_range(output: List[Union[int, Tuple[int, int]]], first: int, last: int):
+    def expand_range(output: list[Union[int, tuple[int, int]]], first: int, last: int):
         if first == last:
             output.append(last)
         elif first + 1 == last:
@@ -228,7 +228,7 @@ def list_to_ranges(the_list: List[int]) -> List[Union[int, Tuple[int, int]]]:
         else:
             output.append((first, last))
 
-    result: List[Union[int, Tuple[int, int]]] = []
+    result: list[Union[int, tuple[int, int]]] = []
 
     if len(the_list) == 0:
         return result
@@ -251,7 +251,7 @@ def list_to_ranges(the_list: List[int]) -> List[Union[int, Tuple[int, int]]]:
     return result
 
 
-def list_of_ranges_to_string(atom_list: List[Union[int, Tuple[int, int]]],
+def list_of_ranges_to_string(atom_list: list[Union[int, tuple[int, int]]],
                              maxlength: int = 72,
                              line_format: str = "%10s",
                              item_format: str = "%7s",
@@ -309,7 +309,7 @@ def calculate_hydrogen_position(heavy, light) -> np.ndarray:
     return np.asarray(p1 + alpha/n * (p2 - p1))
 
 
-def shares_elements(a: List, b: List) -> bool:
+def shares_elements(a: list, b: list) -> bool:
     """Returns True if lists (sets) a and b shares elements. Otherwise, false.
     """
     sa = set(a)

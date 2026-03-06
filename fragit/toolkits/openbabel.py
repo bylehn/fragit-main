@@ -2,7 +2,7 @@
 Copyright (C) 2011-2023 Casper Steinmann
 """
 from __future__ import annotations
-from typing import List, Tuple, Iterable, Optional
+from typing import Iterable, Optional
 
 from fragit.fragit_exceptions import OBNotFoundException
 
@@ -77,7 +77,7 @@ class OBAtomWrapper:
     def set_position(self, x: float, y: float, z: float) -> None:
         self._ob_atom.SetVector(x, y, z)
 
-    def get_position(self) -> Tuple[float, float, float]:
+    def get_position(self) -> tuple[float, float, float]:
         return (self._ob_atom.GetX(), self._ob_atom.GetY(), self._ob_atom.GetZ())
 
     def iter_neighbors(self) -> Iterable[OBAtomWrapper]:
@@ -155,7 +155,7 @@ class OBMolWrapper:
     def delete_bond(self, bond: OBBondWrapper) -> None:
         self._ob_mol.DeleteBond(bond._ob_bond)
 
-    def find_children(self, a1: int, a2: int) -> List[int]:
+    def find_children(self, a1: int, a2: int) -> list[int]:
         tmp = openbabel.vectorInt()
         self._ob_mol.FindChildren(tmp, a2, a1)
         return [value for value in tmp]
@@ -174,7 +174,7 @@ class OBSmartsMatcher:
     def __init__(self):
         self._pattern = openbabel.OBSmartsPattern()
 
-    def match(self, mol: OBMolWrapper, pattern: str) -> List[Tuple[int, ...]]:
+    def match(self, mol: OBMolWrapper, pattern: str) -> list[tuple[int, ...]]:
         self._pattern.Init(pattern)
         self._pattern.Match(mol._ob_mol)
         return [m for m in self._pattern.GetUMapList()]
@@ -191,7 +191,7 @@ class OBChargeModelWrapper:
     def compute_charges(self, mol: OBMolWrapper) -> bool:
         return self._charge_model.ComputeCharges(mol._ob_mol)
 
-    def get_partial_charges(self) -> List[float]:
+    def get_partial_charges(self) -> list[float]:
         return list(self._charge_model.GetPartialCharges())
 
 

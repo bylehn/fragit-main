@@ -7,10 +7,10 @@ from fragit.xyzmfcc import XYZMFCC
 from fragit.xyz import XYZ
 from fragit.writer import Standard
 
-from typing import Dict, Tuple, Type
+from typing import Type
 
 
-def get_writer_and_extension(theformat: str) -> Tuple[Type[Standard], str]:
+def get_writer_and_extension(theformat: str) -> tuple[Type[Standard], str]:
     formats = supported_output_formats()
     extensions = supported_output_fileexts()
     if theformat not in formats:
@@ -18,8 +18,8 @@ def get_writer_and_extension(theformat: str) -> Tuple[Type[Standard], str]:
     return formats[theformat], extensions[theformat]
 
 
-def supported_output_formats() -> Dict[str, Type[Standard]]:
-    formats: Dict[str, Type[Standard]] = {
+def supported_output_formats() -> dict[str, Type[Standard]]:
+    formats: dict[str, Type[Standard]] = {
         "GAMESS-FMO": GamessFMO,
         "XYZ-MFCC": XYZMFCC,
         "XYZ": XYZ

@@ -10,7 +10,7 @@ from fragit.util import float_list_from_string, int_list_from_string
 class Standard(object):
     def __init__(self, fragmentation, directories):
         self._fragmentation = fragmentation
-        self._fragment_layers: List[int] = [1 for _ in fragmentation.get_fragments()]
+        self._fragment_layers: list[int] = [1 for _ in fragmentation.get_fragments()]
         self._nlayers: int = 1
         self._boundaries = []
         self._title = ""

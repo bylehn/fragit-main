@@ -4,7 +4,6 @@ Some portions Copyright (C) 2011-2023 Casper Steinmann
 """
 from configparser import RawConfigParser
 import sys
-from typing import List, Tuple, Dict
 
 from fragit.util import remove_duplicates
 
@@ -291,24 +290,24 @@ class FragItConfig(object):
     def get_writer(self) -> str:
         return str(self.values["fragmentation"]["writer"])
 
-    def get_break_patterns(self) -> Dict[str, str]:
+    def get_break_patterns(self) -> dict[str, str]:
         output = dict()
         for key in self.values["fragmentpatterns"]:
             output[key] = self.values["fragmentpatterns"][key]
         return output
 
-    def set_break_patterns(self, value: Dict[str, str]):
+    def set_break_patterns(self, value: dict[str, str]):
         if not isinstance(value, dict):
             raise TypeError
         self.values["fragmentpatterns"] = value
 
-    def get_protect_patterns(self) -> Dict[str, str]:
+    def get_protect_patterns(self) -> dict[str, str]:
         output = dict()
         for key in self.values["protectpatterns"]:
             output[key] = self.values["protectpatterns"][key]
         return output
 
-    def set_protect_patterns(self, value: Dict[str, str]):
+    def set_protect_patterns(self, value: dict[str, str]):
         if not isinstance(value, dict):
             raise TypeError
         self.values["protectpatterns"] = value
@@ -316,7 +315,7 @@ class FragItConfig(object):
     def clear_protect_patterns(self):
         self.values["protectpatterns"] = dict()
 
-    def get_combine_fragments(self) -> List[int]:
+    def get_combine_fragments(self) -> list[int]:
         values = self.values["fragmentation"]["combinefragments"]
         if len(values) > 0:
             list_of_ids = values.split(",")
@@ -330,14 +329,14 @@ class FragItConfig(object):
             return
         self.values["fragmentation"]["combinefragments"] = value
 
-    def get_explicitly_protected_atoms(self) -> List[int]:
+    def get_explicitly_protected_atoms(self) -> list[int]:
         values = self.values["explicitprotectatoms"]["atomids"]
         if len(values) > 0:
             list_of_ids = values.split(",")
             return list(map(int, list_of_ids))
         return []
 
-    def add_explicitly_protected_atoms(self, value: List[int]):
+    def add_explicitly_protected_atoms(self, value: list[int]):
         if not isinstance(value, list):
             raise TypeError
         list_of_ids = self.get_explicitly_protected_atoms()
@@ -347,7 +346,7 @@ class FragItConfig(object):
         output = map(str, list_of_ids)
         self.values["explicitprotectatoms"]["atomids"] = ",".join(output)
 
-    def get_explicitly_break_atom_pairs(self) -> List[Tuple[int, int]]:
+    def get_explicitly_break_atom_pairs(self) -> list[tuple[int, int]]:
         values = self.values["explicitfragmentpairs"]["pairs"]
         if len(values) > 0:
             if values[-1] == ";":
@@ -357,12 +356,12 @@ class FragItConfig(object):
         return []
 
     @staticmethod
-    def _pair_to_tuple(value: str) -> Tuple[int, int]:
-        values: List[str] = value.split(",")
+    def _pair_to_tuple(value: str) -> tuple[int, int]:
+        values: list[str] = value.split(",")
         return int(values[0]), int(values[1])
 
     @staticmethod
-    def _pair_from_tuple(value: Tuple[int, int]) -> str:
+    def _pair_from_tuple(value: tuple[int, int]) -> str:
         if not isinstance(value, tuple) and len(value) != 2:
             raise ValueError
         return f"{value[0]:d},{value[1]:d}"
@@ -478,7 +477,7 @@ class FragItConfig(object):
         return float(self.values["qmmm"]["includeallwithin"])
 
     # options for QM
-    def get_qm_basis(self) -> List[str]:
+    def get_qm_basis(self) -> list[str]:
         return list(self.values["qm"]["basis"].split(":"))
 
     def set_qm_basis(self, value: str):

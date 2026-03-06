@@ -3,7 +3,6 @@ Copyright (C) 2010-2011 Mikael W. Ibsen
 Some portions Copyright (C) 2011-2023 Casper Steinmann
 """
 import sys
-from typing import List, Tuple
 
 from fragit.toolkits import get_toolkit
 from fragit.util import remove_duplicates, flatten, difference, uniqifyListOfLists, is_tuple_values_in_either_list, LABEL2Z
@@ -26,14 +25,14 @@ class Fragmentation(FragItConfig):
         FragItConfig.__init__(self, defaults=defaults, filename=conffile, **kwargs)
         self.mol = mol
         self.pat = get_toolkit().make_smarts_matcher()
-        self._atom_names: List[str] = []
-        self._residue_names: List[str] = []
-        self._fragment_names: List[str] = []
-        self._fragment_charges: List[int] = []
-        self._fragments: List[List[int]] = []
-        self._backbone_atoms: List[int] = []
-        self._water_molecules: List[int] = []
-        self._mergeable_atoms: List[int] = []
+        self._atom_names: list[str] = []
+        self._residue_names: list[str] = []
+        self._fragment_names: list[str] = []
+        self._fragment_charges: list[int] = []
+        self._fragments: list[list[int]] = []
+        self._backbone_atoms: list[int] = []
+        self._water_molecules: list[int] = []
+        self._mergeable_atoms: list[int] = []
         self._atoms: List = []
         self._fragment_charges_filename = None  # to read in fragment charges
         self._fix_atoms_and_charges()
@@ -220,7 +219,7 @@ class Fragmentation(FragItConfig):
         self.determine_fragment_charges()
         self.name_fragments()
 
-    def get_fragments(self) -> List[List[int]]:
+    def get_fragments(self) -> list[list[int]]:
         """
             Note:
             Probably should be a copy (instead of a reference)
@@ -229,13 +228,13 @@ class Fragmentation(FragItConfig):
         """
         return self._fragments
 
-    def get_fragment_names(self) -> List[str]:
+    def get_fragment_names(self) -> list[str]:
         return self._fragment_names
 
-    def get_atoms(self) -> List:
+    def get_atoms(self) -> list:
         return self._atoms
 
-    def get_ob_atoms(self) -> List:
+    def get_ob_atoms(self) -> list:
         return self.get_atoms()
 
     def set_protected_atoms(self):
@@ -249,7 +248,7 @@ class Fragmentation(FragItConfig):
                 continue
             self.add_explicitly_protected_atoms(self._get_atoms_to_protect(pattern))
 
-    def _get_atoms_to_protect(self, pattern: str) -> List[int]:
+    def _get_atoms_to_protect(self, pattern: str) -> list[int]:
         return flatten(self.pat.match(self.mol, pattern))
 
     def identify_residues(self):
@@ -269,7 +268,7 @@ class Fragmentation(FragItConfig):
         self._residue_names = result
         return result
 
-    def is_bond_protected(self, atom_pair: Tuple[int, int]) -> bool:
+    def is_bond_protected(self, atom_pair: tuple[int, int]) -> bool:
         """ Returns whether a bond between two atoms is protected """
         protected_atoms = self.get_explicitly_protected_atoms()
         for bond_atom in atom_pair:
@@ -293,7 +292,7 @@ class Fragmentation(FragItConfig):
 
             self._delete_ob_mol_bond(atom_pair)
 
-    def _delete_ob_mol_bond(self, atom_pair: Tuple[int, int]):
+    def _delete_ob_mol_bond(self, atom_pair: tuple[int, int]):
         """ Deletes the bond in the molecule between a pair of atoms
 
             with version 2.5 of the openbabel API there has been a change in
@@ -337,7 +336,7 @@ class Fragmentation(FragItConfig):
             for pair in matches:
                 self.add_fragmentation_atom_pair(pair)
 
-    def add_fragmentation_atom_pair(self, atom_pair: Tuple[int, int]):
+    def add_fragmentation_atom_pair(self, atom_pair: tuple[int, int]):
         """ Adds an atom pair to the list of fragmentation points
 
             A test is made to see if the atom pair is protected from
@@ -350,7 +349,7 @@ class Fragmentation(FragItConfig):
             return
         self.add_explicitly_break_atom_pairs([atom_pair])
 
-    def is_valid_explicit_bond(self, pair: Tuple[int, int]) -> bool:
+    def is_valid_explicit_bond(self, pair: tuple[int, int]) -> bool:
         """ Returns whether a pair of atoms contains a bond between them
 
             Arguments:
@@ -415,7 +414,7 @@ class Fragmentation(FragItConfig):
         if len(self._fragments) == 0:
             raise ValueError("You must fragment the molecule first.")
         group_size = self.get_fragment_group_count()
-        new_fragments: List[List[int]] = []
+        new_fragments: list[list[int]] = []
         last_fragment = None
         group_count = 0
         temporary_fragment = []
@@ -450,7 +449,7 @@ class Fragmentation(FragItConfig):
 
         self._fragments = new_fragments
 
-    def is_fragment_joinable(self, frag1: List[int], frag2: List[int]) -> bool:
+    def is_fragment_joinable(self, frag1: list[int], frag2: list[int]) -> bool:
         if frag2 is None:
             return True
         for p in self.get_explicitly_break_atom_pairs():
@@ -477,11 +476,11 @@ class Fragmentation(FragItConfig):
             self._total_charge = sum(self._fragment_charges)
             self.validate_total_charge()
 
-    def get_integer_fragment_charge(self, fragment: List[int]) -> int:
+    def get_integer_fragment_charge(self, fragment: list[int]) -> int:
         charge = self.get_sum_of_atomic_charges_in_fragment(fragment)
         return int(round(charge, 0))
 
-    def get_sum_of_atomic_charges_in_fragment(self, fragment: List[int]) -> float:
+    def get_sum_of_atomic_charges_in_fragment(self, fragment: list[int]) -> float:
         """ Computes the sum of atomic charges in a fragment
 
             Arguments:
@@ -545,14 +544,14 @@ class Fragmentation(FragItConfig):
         """ Deprecated alias for get_atom(). """
         return self.get_atom(atom_index)
 
-    def name_fragments(self) -> List[str]:
+    def name_fragments(self) -> list[str]:
         names = list()
         for fragment in self.get_fragments():
             names.append(self.name_fragment(fragment))
         self._fragment_names = names
         return names
 
-    def name_fragment(self, atoms: List[int]) -> str:
+    def name_fragment(self, atoms: list[int]) -> str:
         charge_lbls = ["", "+", "-"]
 
         if len(atoms) == 0:
