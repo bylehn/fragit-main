@@ -344,7 +344,12 @@ def directories(from_file):
     abs_path = os.path.abspath(from_file)
     bin_path = os.path.dirname(abs_path)
     path = os.path.dirname(bin_path)
-    share_path = os.path.join(path, 'share')
+
+    # When installed via pip/pixi the share data lives inside the package.
+    # Fall back to the legacy prefix-relative location for classic installs.
+    pkg_share = os.path.join(os.path.dirname(__file__), 'share')
+    share_path = pkg_share if os.path.isdir(pkg_share) else os.path.join(path, 'share')
+
     return {'path': path, 'bin': bin_path, 'share': share_path}
 
 

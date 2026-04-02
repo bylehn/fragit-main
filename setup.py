@@ -46,6 +46,7 @@ def setup_fragit():
         platforms = "Any",
         package_dir={'fragit': 'fragit'},
         packages=['fragit'],
+        package_data={'fragit': ['share/templates/*', 'share/hmo/*', 'share/README.md']},
         scripts=['scripts/fragit', 'scripts/fragit-conf'],
         data_files=[
             ('', ['README.md', 'LICENSE', 'CHANGES.md']),
